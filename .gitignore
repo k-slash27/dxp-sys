@@ -1,0 +1,31 @@
+.env
+.env.local
+.env.*.local
+
+# Node.js
+node_modules/
+.next/
+out/
+dist/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Docker
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# GeoServer data（永続化データはGitに含めない）
+geoserver/data/gwc/
+geoserver/data/logs/
+geoserver/data/temp/
+
+# bind mount データディレクトリ（TIF・GeoServer設定など）
+data/ortho/
+data/geoserver_data/

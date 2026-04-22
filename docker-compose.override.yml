@@ -1,0 +1,60 @@
+services:
+  geoserver:
+    ports:
+      - "8080:8080"
+
+  postgis:
+    ports:
+      - "5432:5432"
+
+  register-service:
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./register-service/app:/app/app
+      - ./register-service/templates:/app/templates
+
+  operator:
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=development
+
+  frontend:
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+
+  nginx:
+    ports:
+      - "80:80"
+
+volumes:
+  # ローカル開発: named volume をホストの bind mount にマップ
+  # コンテナ再作成後もデータが ./data/ に保持される
+  geoserver_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/data/geoserver_data
+  ortho_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/data/ortho
+  # NFS 環境例（本番サーバー用 override.prod.yml での記述例）:
+  # geoserver_data:
+  #   driver: local
+  #   driver_opts:
+  #     type: nfs
+  #     o: addr=192.168.1.100,rw
+  #     device: ":/exports/geoserver_data"
+  # ortho_data:
+  #   driver: local
+  #   driver_opts:
+  #     type: nfs
+  #     o: addr=192.168.1.100,rw
+  #     device: ":/exports/ortho"

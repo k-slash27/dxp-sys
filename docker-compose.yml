@@ -1,0 +1,128 @@
+services:
+  geoserver:
+    image: kartoza/geoserver:2.28.2
+    volumes:
+      - geoserver_data:/opt/geoserver/data_dir
+      - ortho_data:/data/ortho
+    environment:
+      - GEOSERVER_DATA_DIR=/opt/geoserver/data_dir
+      - GEOWEBCACHE_CACHE_DIR=/opt/geoserver/data_dir/gwc
+      - INITIAL_MEMORY=512M
+      - MAXIMUM_MEMORY=1536M
+      - GEOSERVER_ADMIN_USER=${GEOSERVER_USER:-admin}
+      - GEOSERVER_ADMIN_PASSWORD=${GEOSERVER_PASSWORD:-geoserver}
+      - CORS_ENABLED=true
+      - CORS_ALLOWED_ORIGINS=*
+      - CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,HEAD,OPTIONS
+      - CORS_ALLOWED_HEADERS=*
+      - USE_JAI_IMAGEREAD=false
+      - IIO_HTTP_MAX_REQUESTS=256
+      - IIO_HTTP_MAX_REQUESTS_PER_HOST=128
+      # COGヘッダー最適化（仕様書§7.3）: 16KB以上でHTTPリクエスト回数を削減
+      - JAVA_OPTS=-Dit.geosolutions.cog.default.header.length=16384
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/geoserver/web/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    restart: unless-stopped
+
+  postgis:
+    image: ghcr.io/baosystems/postgis:15-3.4
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-dxp}
+      POSTGRES_USER: ${POSTGRES_USER:-dxp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dxp}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dxp}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  register-service:
+    build: ./register-service
+    volumes:
+      - ortho_data:/data/ortho
+      - geoserver_data:/opt/geoserver/data_dir  # シンリンク作成のため data_dir を共有
+    environment:
+      - GEOSERVER_URL=http://geoserver:8080/geoserver
+      - GEOSERVER_USER=${GEOSERVER_USER:-admin}
+      - GEOSERVER_PASSWORD=${GEOSERVER_PASSWORD:-geoserver}
+      - DATA_DIR=/data/ortho
+      - GEOSERVER_DATA_DIR=/opt/geoserver/data_dir
+    depends_on:
+      geoserver:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  operator:
+    build: ./operator
+    environment:
+      - REGISTER_SERVICE_URL=http://register-service:8000
+      - GEOSERVER_URL=http://geoserver:8080/geoserver
+      - GEOSERVER_USERNAME=${GEOSERVER_USER:-admin}
+      - GEOSERVER_PASSWORD=${GEOSERVER_PASSWORD:-geoserver}
+      # Auth0 認証（operator 用）
+      - AUTH0_SECRET=${OPERATOR_AUTH0_SECRET}
+      - AUTH0_BASE_URL=${OPERATOR_AUTH0_BASE_URL:-http://localhost/operator}
+      - AUTH0_ISSUER_BASE_URL=${AUTH0_ISSUER_BASE_URL}
+      - AUTH0_CLIENT_ID=${OPERATOR_AUTH0_CLIENT_ID}
+      - AUTH0_CLIENT_SECRET=${OPERATOR_AUTH0_CLIENT_SECRET}
+      - AUTH0_AUDIENCE=${AUTH0_AUDIENCE}
+      - AUTH0_COOKIE_NAME=operator_session
+      - NEXT_PUBLIC_AUTH0_NAMESPACE=${AUTH0_NAMESPACE:-https://dxp/}
+    depends_on:
+      register-service:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    environment:
+      - NEXT_PUBLIC_GEOSERVER_HOST=/geoserver
+      - GEOSERVER_URL=http://geoserver:8080/geoserver
+      - GEOSERVER_USER=${GEOSERVER_USER:-admin}
+      - GEOSERVER_PASSWORD=${GEOSERVER_PASSWORD:-geoserver}
+      - REGISTER_SERVICE_URL=http://register-service:8000
+      # Auth0 認証（frontend 用）
+      - AUTH0_SECRET=${FRONTEND_AUTH0_SECRET}
+      - AUTH0_BASE_URL=${FRONTEND_AUTH0_BASE_URL:-http://localhost}
+      - AUTH0_ISSUER_BASE_URL=${AUTH0_ISSUER_BASE_URL}
+      - AUTH0_CLIENT_ID=${FRONTEND_AUTH0_CLIENT_ID}
+      - AUTH0_CLIENT_SECRET=${FRONTEND_AUTH0_CLIENT_SECRET}
+      - AUTH0_MANAGEMENT_CLIENT_ID=${AUTH0_MANAGEMENT_CLIENT_ID}
+      - AUTH0_MANAGEMENT_CLIENT_SECRET=${AUTH0_MANAGEMENT_CLIENT_SECRET}
+      - AUTH0_AUDIENCE=${AUTH0_AUDIENCE}
+      - AUTH0_COOKIE_NAME=frontend_session
+      - NEXT_PUBLIC_AUTH0_NAMESPACE=${AUTH0_NAMESPACE:-https://dxp/}
+    depends_on:
+      geoserver:
+        condition: service_healthy
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - geoserver
+      - operator
+      - frontend
+      - register-service
+    restart: unless-stopped
+
+volumes:
+  geoserver_data:   # GeoServer 設定・スタイル（override で bind mount にマップ）
+  ortho_data:       # TIF + ImageMosaic インデックス（override で bind mount にマップ）
+  postgres_data:    # PostgreSQL データ（権限管理が複雑なため named volume のまま）

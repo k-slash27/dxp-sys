@@ -1,0 +1,15 @@
+html,
+body {
+  padding: 0;
+  margin: 0;
+  font-family: 'Noto Sans JP', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', 'Meiryo', sans-serif;
+  height: 100%;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+#__next {
+  height: 100%;
+}
