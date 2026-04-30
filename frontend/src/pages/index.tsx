@@ -15,6 +15,15 @@ export default function Page() {
 
     // 生産者日誌パネル
     const [showJournal, setShowJournal] = useState(false);
+    const [journalEntries, setJournalEntries] = useState<any[]>([]);
+    const [selectedJournalId, setSelectedJournalId] = useState<string | null>(null);
+
+    // 日誌を閉じたときにマーカーをクリア
+    const handleJournalClose = useCallback(() => {
+        setShowJournal(false);
+        setPickingLocation(false);
+        setJournalEntries([]);
+    }, []);
 
     // 地図クリックで位置取得するモード
     const [pickingLocation, setPickingLocation] = useState(false);
@@ -57,10 +66,18 @@ export default function Page() {
     // 座標消費（メモ化して JournalForm の useEffect 依存を安定化）
     const handleLocationConsumed = useCallback(() => setPickedLocation(null), []);
 
+    // マーカークリック → 日誌パネルを開いて詳細ビューを表示
+    const handleJournalMarkerClick = useCallback((entryId: string) => {
+        setShowJournal(true);
+        setSelectedJournalId(entryId);
+    }, []);
+
     const areaMapProps = {
         userInfo,
         pickingLocation,
         onLocationPick: handleLocationPick,
+        journalEntries: showJournal ? journalEntries : [],
+        onJournalMarkerClick: handleJournalMarkerClick,
     };
 
     const getAreaComponent = () => {
@@ -94,12 +111,15 @@ export default function Page() {
                         <JournalPanel
                             workspace={selectedArea}
                             userInfo={userInfo}
-                            onClose={() => { setShowJournal(false); setPickingLocation(false); }}
+                            onClose={handleJournalClose}
+                            onEntriesChange={setJournalEntries}
                             pickingLocation={pickingLocation}
                             onRequestLocationPick={() => setPickingLocation(true)}
                             onCancelLocationPick={() => setPickingLocation(false)}
                             pickedLocation={pickedLocation}
                             onLocationConsumed={handleLocationConsumed}
+                            selectedEntryId={selectedJournalId}
+                            onSelectedEntryConsumed={() => setSelectedJournalId(null)}
                         />
                     )}
                 </Dashboard>
