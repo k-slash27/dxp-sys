@@ -16,7 +16,7 @@ dayjs.tz.setDefault('Asia/Tokyo');
 // センサー詳細情報コンポーネント
 const WaterLevelDetails = ({ selected, onClose }) => {
     const [displayMode, setDisplayMode] = useState<string>('graph');
-    const { width, resizeHandle } = useResizable(350, 240, 800);
+    const { width, resizeHandle } = useResizable(370, 240, 800);
 
     return (
         <div style={{ position: 'absolute', top: '110px', right: '10px', width, height: 'calc(100vh - 210px)', borderRadius: '8px', zIndex: 999, backgroundColor: 'white', boxShadow: '4px 0 8px rgba(0, 0, 0, 0.15)' }}>

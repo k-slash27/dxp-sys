@@ -73,7 +73,7 @@ const AreaSelector: React.FC<AreaSelectorProps> = ({
             border: '1px solid #d1d5db',
             borderRadius: '6px',
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            zIndex: 1000,
+            zIndex: 3000,
             overflow: 'hidden',
         },
         dropdownItem: {
@@ -154,7 +154,7 @@ const AreaSelector: React.FC<AreaSelectorProps> = ({
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        zIndex: 999,
+                        zIndex: 2999,
                     }}
                     onClick={() => setIsOpen(false)}
                 />

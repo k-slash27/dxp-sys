@@ -96,7 +96,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                                     color: 'white',
                                     borderRadius: '6px',
                                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                                    zIndex: 1000,
+                                    zIndex: 3000,
                                     minWidth: '200px',
                                     fontSize: '13px',
                                     lineHeight: '1.4'

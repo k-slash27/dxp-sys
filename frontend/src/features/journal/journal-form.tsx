@@ -1,5 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { X, MapPin, Camera, Trash2, Loader2, ArrowLeft, Save } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { X, MapPin, Camera, Trash2, Loader2, ArrowLeft, Save, Calendar } from 'lucide-react';
+import {
+  MODAL_OVERLAY, MODAL_CONTAINER,
+  FORM_LABEL, FORM_INPUT, FORM_ERROR,
+  BUTTON_BASE, BUTTON_CANCEL, BUTTON_SUBMIT,
+} from '@/styles/modal-form-constants';
 
 interface JournalEntry {
   id: string;
@@ -55,6 +60,7 @@ export default function JournalForm({
   onBack,
 }: JournalFormProps) {
   const isEdit = !!initialData;
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   const [recordDate, setRecordDate]   = useState(initialData?.record_date ?? today());
   const [textContent, setTextContent] = useState(initialData?.text_content ?? '');
@@ -137,48 +143,52 @@ export default function JournalForm({
 
   const clearLocation = () => { setLat(''); setLng(''); };
 
-  /* ---- スタイル定数 ---- */
-  const overlay: React.CSSProperties = {
-    position: 'fixed', inset: 0, zIndex: 3000,
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-  };
+  /* ---- スタイル定数（共有定数を拡張） ---- */
+  const overlay = MODAL_OVERLAY;
   const modal: React.CSSProperties = {
-    backgroundColor: '#1a1f2e', borderRadius: '12px',
-    width: '480px', maxWidth: '95vw', maxHeight: '90vh',
-    overflowY: 'auto', color: '#e5e7eb',
-    boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+    ...MODAL_CONTAINER,
+    width: '480px', maxWidth: '95vw', padding: 0,
+    color: '#374151', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
     fontFamily: 'sans-serif', fontSize: '14px',
   };
   const field: React.CSSProperties = { marginBottom: '16px' };
-  const labelStyle: React.CSSProperties = { display: 'block', marginBottom: '6px', color: '#9ca3af', fontSize: '12px', fontWeight: 500 };
+  const labelStyle: React.CSSProperties = { ...FORM_LABEL, display: 'block', marginBottom: '6px' };
   const input: React.CSSProperties = {
-    width: '100%', padding: '8px 10px', boxSizing: 'border-box',
-    backgroundColor: '#252d3d', border: '1px solid #374151',
-    borderRadius: '6px', color: '#e5e7eb', fontSize: '14px',
+    ...FORM_INPUT,
+    width: '100%', boxSizing: 'border-box',
+    backgroundColor: 'white', color: '#374151',
   };
   const textarea: React.CSSProperties = { ...input, minHeight: '100px', resize: 'vertical' };
-  const btnPrimary: React.CSSProperties = {
-    padding: '9px 20px', backgroundColor: '#3b82f6', color: '#fff',
-    border: 'none', borderRadius: '6px', cursor: 'pointer',
-    fontSize: '14px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px',
-  };
-  const btnSecondary: React.CSSProperties = {
-    ...btnPrimary, backgroundColor: 'transparent',
-    border: '1px solid #374151', color: '#9ca3af',
-  };
-  const btnGhost: React.CSSProperties = {
-    ...btnPrimary, backgroundColor: '#2d3748', color: '#d1d5db', fontWeight: 400,
-  };
+  const btnPrimary: React.CSSProperties = { ...BUTTON_BASE, ...BUTTON_SUBMIT };
+  const btnSecondary: React.CSSProperties = { ...BUTTON_BASE, ...BUTTON_CANCEL };
+  const btnGhost: React.CSSProperties = { ...BUTTON_BASE, ...BUTTON_CANCEL, fontWeight: 400, minWidth: 'unset' };
 
   /* ---- フォーム本体 JSX（inline / modal 共通） ---- */
   const formBody = (
     <form onSubmit={handleSubmit} style={{ padding: '20px 24px' }}>
       {/* 記録日 */}
       <div style={field}>
-        <label style={labelStyle}>記録日 *</label>
-        <input type="date" value={recordDate} required
-               onChange={e => setRecordDate(e.target.value)} style={input} />
+        <label htmlFor="record-date" style={labelStyle}>記録日 *</label>
+        <div style={{ position: 'relative' }}>
+          {/* 表示層: フォーマット済み日付 + アイコン（pointer-events なし） */}
+          <div style={{ ...input, display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none', pointerEvents: 'none' }}>
+            <span>{new Date(recordDate + 'T00:00:00').toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' })}</span>
+            <Calendar size={14} style={{ color: '#9ca3af', flexShrink: 0 }} />
+          </div>
+          {/* 操作層: 透明な date input で全体を覆う */}
+          <input
+            ref={dateInputRef}
+            id="record-date"
+            name="record_date"
+            type="date"
+            value={recordDate}
+            required
+            onChange={e => setRecordDate(e.target.value)}
+            onClick={() => dateInputRef.current?.showPicker()}
+            onKeyDown={e => e.preventDefault()}
+            style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', border: 'none', background: 'none' }}
+          />
+        </div>
       </div>
 
       {/* 作業内容 */}
@@ -200,7 +210,7 @@ export default function JournalForm({
           </button>
           {(lat || lng) && (
             <button type="button" onClick={clearLocation}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}>
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}>
               <X size={14} />
             </button>
           )}
@@ -232,7 +242,7 @@ export default function JournalForm({
                   src={`/api/register${p.url}`}
                   alt={p.filename}
                   style={{ width: '80px', height: '80px', objectFit: 'cover',
-                           borderRadius: '6px', border: '1px solid #374151' }}
+                           borderRadius: '6px', border: '1px solid #d1d5db' }}
                   onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
                 />
                 {isEdit && (
@@ -262,8 +272,8 @@ export default function JournalForm({
 
       {/* エラー */}
       {error && (
-        <div style={{ padding: '10px', backgroundColor: '#450a0a', border: '1px solid #7f1d1d',
-                      borderRadius: '6px', color: '#fca5a5', marginBottom: '16px', fontSize: '13px' }}>
+        <div style={{ ...FORM_ERROR, padding: '10px', backgroundColor: '#fef2f2',
+                      border: '1px solid #fecaca', borderRadius: '6px', marginBottom: '16px', fontSize: '13px' }}>
           {error}
         </div>
       )}
@@ -276,7 +286,7 @@ export default function JournalForm({
             <button
               type="button"
               onClick={onBack}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '13px', padding: 0 }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '13px', padding: 0 }}
             >
               <ArrowLeft size={15} /> 一覧に戻る
             </button>
@@ -337,8 +347,8 @@ export default function JournalForm({
       <>
         {commonParts}
         <div style={{ flex: 1, overflowY: 'auto', display: pickingLocation ? 'none' : undefined }}>
-          <div style={{ padding: '20px 24px 0', borderBottom: '1px solid #2d3748', marginBottom: '0' }}>
-            <h2 style={{ margin: '0 0 14px', fontSize: '18px', fontWeight: 700, color: '#e5e7eb' }}>
+          <div style={{ padding: '20px 24px 0', borderBottom: '1px solid #e5e7eb', marginBottom: '0' }}>
+            <h2 style={{ margin: '0 0 14px', fontSize: '18px', fontWeight: 700, color: '#111827' }}>
               {isEdit ? '記録を編集' : '新規記録'}
             </h2>
           </div>
@@ -356,12 +366,12 @@ export default function JournalForm({
            onClick={e => { if (e.target === e.currentTarget) onCancel(); }}>
         <div style={modal}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '20px 24px 16px', borderBottom: '1px solid #2d3748' }}>
-            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>
+                        padding: '20px 24px 16px', borderBottom: '1px solid #e5e7eb' }}>
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#111827' }}>
               {isEdit ? '記録を編集' : '新規記録'}
             </h2>
             <button onClick={onCancel}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }}>
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '24px' }}>
               <X size={20} />
             </button>
           </div>

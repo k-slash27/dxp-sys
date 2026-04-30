@@ -17,7 +17,7 @@ dayjs.tz.setDefault('Asia/Tokyo');
 // センサー詳細情報コンポーネント
 const SensorDetails = ({ selected, onClose }) => {
     const [displayMode, setDisplayMode] = useState<string>('graph');
-    const { width, resizeHandle } = useResizable(350, 240, 800);
+    const { width, resizeHandle } = useResizable(370, 240, 800);
 
     const wbgtValue = calculateWBGT(selected.properties.temp, selected.properties.humid);
 

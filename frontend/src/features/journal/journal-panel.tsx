@@ -44,7 +44,7 @@ export default function JournalPanel({
   selectedEntryId,
   onSelectedEntryConsumed,
 }: JournalPanelProps) {
-  const { width, resizeHandle } = useResizable(380, 280, 720);
+  const { width, resizeHandle } = useResizable(400, 280, 720);
 
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [total, setTotal] = useState(0);
@@ -52,6 +52,8 @@ export default function JournalPanel({
   const [fetchError, setFetchError] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const fromDateInputRef = useRef<HTMLInputElement>(null);
+  const toDateInputRef   = useRef<HTMLInputElement>(null);
   const [view, setView] = useState<'list' | 'detail'>('list');
   const [activeEntry, setActiveEntry] = useState<JournalEntry | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -234,9 +236,23 @@ export default function JournalPanel({
             {/* フィルター */}
             <div style={filterStyle}>
               <span style={{ fontSize: '12px', color: '#718096', flexShrink: 0 }}>期間：</span>
-              <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} style={inputStyle} />
+              {/* 開始日 */}
+              <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+                <div style={{ ...inputStyle, flex: undefined, minWidth: undefined, display: 'flex', alignItems: 'center', justifyContent: 'space-between', pointerEvents: 'none', userSelect: 'none' }}>
+                  <span>{fromDate ? new Date(fromDate + 'T00:00:00').toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '開始日'}</span>
+                  <Calendar size={11} style={{ color: '#a0aec0', flexShrink: 0, marginLeft: '4px' }} />
+                </div>
+                <input ref={fromDateInputRef} type="date" id="from-date" name="from_date" value={fromDate} onChange={e => setFromDate(e.target.value)} onClick={() => fromDateInputRef.current?.showPicker()} onKeyDown={e => e.preventDefault()} style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', border: 'none', background: 'none' }} />
+              </div>
               <span style={{ color: '#a0aec0', flexShrink: 0 }}>〜</span>
-              <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} style={inputStyle} />
+              {/* 終了日 */}
+              <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+                <div style={{ ...inputStyle, flex: undefined, minWidth: undefined, display: 'flex', alignItems: 'center', justifyContent: 'space-between', pointerEvents: 'none', userSelect: 'none' }}>
+                  <span>{toDate ? new Date(toDate + 'T00:00:00').toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '終了日'}</span>
+                  <Calendar size={11} style={{ color: '#a0aec0', flexShrink: 0, marginLeft: '4px' }} />
+                </div>
+                <input ref={toDateInputRef} type="date" id="to-date" name="to_date" value={toDate} onChange={e => setToDate(e.target.value)} onClick={() => toDateInputRef.current?.showPicker()} onKeyDown={e => e.preventDefault()} style={{ position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer', border: 'none', background: 'none' }} />
+              </div>
               <button style={btnSmall} onClick={applyFilter}>検索</button>
               <button
                 style={{ ...btnGhost, fontSize: '12px', padding: '4px 8px' }}

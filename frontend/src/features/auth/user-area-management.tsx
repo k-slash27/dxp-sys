@@ -1,8 +1,12 @@
 import { AVAILABLE_AREAS } from '@/constants/areas';
-import { display } from 'html2canvas/dist/types/css/property-descriptors/display';
-import { textAlign } from 'html2canvas/dist/types/css/property-descriptors/text-align';
 import { User } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
+import {
+  MODAL_OVERLAY, MODAL_CONTAINER, MODAL_HEADER, MODAL_TITLE, MODAL_CLOSE_BUTTON,
+  MODAL_FORM, FORM_GROUP, FORM_LABEL, FORM_SELECT, FORM_ERROR, FORM_HELP_TEXT,
+  BUTTON_GROUP, BUTTON_BASE, BUTTON_CANCEL, BUTTON_SUBMIT, BUTTON_DISABLED,
+} from '@/styles/modal-form-constants';
+import { useButtonHoverState } from '@/hooks/useButtonHoverState';
 
 interface UserManagementProps {
     onClose: () => void;
@@ -34,7 +38,9 @@ export default function UserManagement({ onClose, onSuccess, userInfo }: UserMan
 
     const currentUserArea = userInfo?.primaryArea || '';
 
-    // ワークスペース名の日本語マッピング
+    const cancelHover = useButtonHoverState('#f3f4f6', '#e5e7eb', isLoading);
+    const submitHover = useButtonHoverState('#3b82f6', '#2563eb', isLoading);
+
     const workspaceNames: { [key: string]: string } = {
         'minobu': '身延町',
         'minami_alpus': '南アルプス市',
@@ -43,7 +49,6 @@ export default function UserManagement({ onClose, onSuccess, userInfo }: UserMan
         'national': '全エリア'
     };
 
-    // ユーザー属性名の日本語マッピング
     const roleNames: { [key: string]: string } = {
         'viewer': '利用者',
         'editor': 'エリア担当者',
@@ -53,55 +58,32 @@ export default function UserManagement({ onClose, onSuccess, userInfo }: UserMan
     const availableWorkspaces = [ ...AVAILABLE_AREAS, 'national' ];
     const availableRoles = ['viewer', 'editor', 'admin'];
 
-    // ユーザー属性に応じて選択可能なエリアを取得
     const getSelectableWorkspaces = (userRole: string) => {
-        if (userRole === 'admin') {
-            return availableWorkspaces;
-        }
-        // 利用者とエリア担当者はnationalを選択不可
+        if (userRole === 'admin') return availableWorkspaces;
         return availableWorkspaces.filter(ws => ws !== 'national');
     };
 
-    // エリア担当者用：管理可能なロールを取得
     const getSelectableRoles = () => {
-        if (canAdmin) {
-            return availableRoles;
-        }
-        if (isEditor) {
-            // エリア担当者は利用者とエリア担当者を管理可能
-            return ['viewer', 'editor'];
-        }
+        if (canAdmin) return availableRoles;
+        if (isEditor) return ['viewer', 'editor'];
         return [];
     };
 
-    // エリア担当者の場合、管理可能なユーザーをフィルタリング
     const getManageableUsers = (allUsers: User[]) => {
-        if (canAdmin) {
-            return allUsers;
-        }
-        if (isEditor) {
-            // 自分の担当エリアのユーザーのみ管理可能
-            return allUsers.filter(user => user.primaryArea === currentUserArea);
-        }
+        if (canAdmin) return allUsers;
+        if (isEditor) return allUsers.filter(user => user.primaryArea === currentUserArea);
         return [];
     };
 
-    // ユーザー一覧を取得
-    useEffect(() => {
-        loadUsers();
-    }, []);
+    useEffect(() => { loadUsers(); }, []);
 
     const loadUsers = async () => {
         setIsLoadingUsers(true);
         try {
             const response = await fetch('/api/admin/list-users');
-            if (!response.ok) {
-                throw new Error('ユーザー一覧の取得に失敗しました');
-            }
+            if (!response.ok) throw new Error('ユーザー一覧の取得に失敗しました');
             const data = await response.json();
-            const allUsers = data.users || [];
-            // エリア担当者の場合は管理可能なユーザーのみ表示
-            setUsers(getManageableUsers(allUsers));
+            setUsers(getManageableUsers(data.users || []));
         } catch (err: any) {
             setError(err.message || 'ユーザー一覧の取得中にエラーが発生しました');
         } finally {
@@ -112,7 +94,6 @@ export default function UserManagement({ onClose, onSuccess, userInfo }: UserMan
     const handleUserSelect = (user: User) => {
         setSelectedUser(user);
         setNewRole(user.role || 'viewer');
-        // エリア担当者の場合は元のエリアを維持
         setNewPrimaryArea(user.primaryArea || '');
         setError(null);
     };
@@ -127,16 +108,11 @@ export default function UserManagement({ onClose, onSuccess, userInfo }: UserMan
         try {
             const response = await fetch('/api/admin/update-user', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     username: selectedUser.username,
                     role: newRole,
-                    ...(canAdmin ? {
-                        primaryArea: newPrimaryArea,
-                        workspaces: newPrimaryArea
-                    } : {})
+                    ...(canAdmin ? { primaryArea: newPrimaryArea, workspaces: newPrimaryArea } : {})
                 })
             });
 
@@ -145,14 +121,10 @@ export default function UserManagement({ onClose, onSuccess, userInfo }: UserMan
                 throw new Error(errorData.message || 'ユーザー情報の変更に失敗しました');
             }
 
-            // ユーザー一覧を再読み込み
             await loadUsers();
-
-            // 選択をリセット
             setSelectedUser(null);
             setNewPrimaryArea('');
             setNewRole('');
-
             onSuccess();
         } catch (err: any) {
             setError(err.message || 'ユーザー情報変更中にエラーが発生しました');
@@ -161,198 +133,64 @@ export default function UserManagement({ onClose, onSuccess, userInfo }: UserMan
         }
     };
 
-    const styles = {
-        overlay: {
-            position: 'fixed' as const,
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 1000,
-            backdropFilter: 'blur(4px)',
-        },
-        modal: {
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            padding: '24px',
-            width: '90%',
-            maxWidth: '800px',
-            maxHeight: '90vh',
-            overflowY: 'auto' as const
-        },
-        header: {
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '20px',
-            paddingBottom: '12px',
-            color: '#333',
-        },
-        title: {
-            margin: 0,
-            fontSize: '18px',
-            fontWeight: '600',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-        },
-        closeButton: {
-            background: 'none',
-            border: 'none',
-            fontSize: '24px',
-            cursor: 'pointer',
-            color: '#6b7280'
-        },
+    /* ユーザーリスト固有スタイル（共有定数にない部分） */
+    const local = {
         content: {
             display: 'grid',
             gridTemplateColumns: '1fr 1fr',
             gap: '24px',
-            alignItems: 'start'
-        },
+            alignItems: 'start',
+        } as React.CSSProperties,
         userList: {
             border: '1px solid #d1d5db',
             borderRadius: '6px',
             maxHeight: '400px',
-            overflowY: 'auto' as const
-        },
+            overflowY: 'auto',
+        } as React.CSSProperties,
         userItem: {
             padding: '12px',
             borderBottom: '1px solid #e5e7eb',
             cursor: 'pointer',
             transition: 'background-color 0.2s ease',
-            color: '#6b7280'
-        },
-        userItemSelected: {
-            backgroundColor: '#eff6ff',
-        },
-        userItemHover: {
-            backgroundColor: '#f3f4f6'
-        },
-        form: {
-            display: 'flex',
-            flexDirection: 'column' as const,
-            gap: '16px'
-        },
-        formGroup: {
-            display: 'flex',
-            flexDirection: 'column' as const,
-            gap: '4px'
-        },
-        label: {
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151'
-        },
-        select: {
-            padding: '8px 12px',
-            border: '1px solid #d1d5db',
-            borderRadius: '4px',
-            fontSize: '14px',
-            backgroundColor: 'white'
-        },
-        input: {
-            padding: '8px 12px',
-            border: '1px solid #d1d5db',
-            borderRadius: '4px',
-            fontSize: '14px'
-        },
-        error: {
-            color: '#ef4444',
-            fontSize: '14px',
-            marginTop: '4px'
-        },
-        buttonGroup: {
-            display: 'flex',
-            gap: '12px',
-            justifyContent: 'flex-end',
-            marginTop: '20px'
-        },
-        button: {
-            padding: '10px 20px',
-            borderRadius: '8px',
-            border: 'none',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            transition: 'all 0.2s',
-            minWidth: '120px',
-            justifyContent: 'center'
-        },
-        cancelButton: {
-            backgroundColor: '#f3f4f6',
-            color: '#374151',
-        },
-        submitButton: {
-            backgroundColor: '#3b82f6',
-            color: 'white',
-        },
-        submitButtonDisabled: {
-            backgroundColor: '#9ca3af',
-            cursor: 'not-allowed'
-        },
-        loading: {
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: '40px',
-            color: '#6b7280'
-        },
-        helpText: {
-            fontSize: '12px',
             color: '#6b7280',
-            lineHeight: '1.6',
-            marginBottom: '16px'
-        },
+        } as React.CSSProperties,
+        userItemSelected: { backgroundColor: '#eff6ff' } as React.CSSProperties,
+        loading: {
+            display: 'flex', justifyContent: 'center', alignItems: 'center',
+            padding: '40px', color: '#6b7280',
+        } as React.CSSProperties,
         infoBox: {
-            backgroundColor: '#f3f4f6',
-            padding: '12px',
-            borderRadius: '8px',
-            fontSize: '13px',
-            color: '#4b5563',
-            lineHeight: '1.5',
-            minHeight: '100px',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            textAlign: 'center' as const
-        },
+            backgroundColor: '#f3f4f6', padding: '12px', borderRadius: '8px',
+            fontSize: '13px', color: '#4b5563', lineHeight: 1.5, minHeight: '100px',
+            display: 'flex', justifyContent: 'center', alignItems: 'center',
+            textAlign: 'center',
+        } as React.CSSProperties,
     };
 
     return (
-        <div style={styles.overlay}>
-            <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
-                <div style={styles.header}>
-                    <h3 style={styles.title}>
+        <div style={MODAL_OVERLAY}>
+            <div style={{ ...MODAL_CONTAINER, maxWidth: '800px' }} onClick={(e) => e.stopPropagation()}>
+                <div style={MODAL_HEADER}>
+                    <h3 style={MODAL_TITLE}>
                         <User size={20} />
                         ユーザー管理
                     </h3>
-                    <button style={styles.closeButton} onClick={onClose}>×</button>
+                    <button style={MODAL_CLOSE_BUTTON} onClick={onClose}>×</button>
                 </div>
 
-                <div style={styles.content}>
+                <div style={local.content}>
                     {/* ユーザー一覧 */}
                     <div>
-                        {/* <h4 style={{ marginTop: 0, marginBottom: '12px', fontSize: '16px', color: '#333', }}>
-                            ユーザー 一覧
-                        </h4> */}
-
                         {isLoadingUsers ? (
-                            <div style={styles.loading}>ユーザー読み込み中...</div>
+                            <div style={local.loading}>ユーザー読み込み中...</div>
                         ) : (
-                            <div style={styles.userList}>
+                            <div style={local.userList}>
                                 {users.map((user) => (
                                     <div
                                         key={user.username}
                                         style={{
-                                            ...styles.userItem,
-                                            ...(selectedUser?.username === user.username ? styles.userItemSelected : {})
+                                            ...local.userItem,
+                                            ...(selectedUser?.username === user.username ? local.userItemSelected : {})
                                         }}
                                         onClick={() => handleUserSelect(user)}
                                         onMouseEnter={(e) => {
@@ -366,7 +204,7 @@ export default function UserManagement({ onClose, onSuccess, userInfo }: UserMan
                                             }
                                         }}
                                     >
-                                        <div style={{ fontWeight: '500', marginBottom: '4px' }}>
+                                        <div style={{ fontWeight: 500, marginBottom: '4px' }}>
                                             {user.email}
                                         </div>
                                         <div style={{ fontSize: '12px' }}>
@@ -385,35 +223,28 @@ export default function UserManagement({ onClose, onSuccess, userInfo }: UserMan
                         </h4>
 
                         {selectedUser ? (
-                            <form style={styles.form} onSubmit={handleSubmit}>
-                                <div style={styles.formGroup}>
-                                    <label style={styles.label}>選択中のユーザー</label>
+                            <form style={MODAL_FORM} onSubmit={handleSubmit}>
+                                <div style={FORM_GROUP}>
+                                    <label style={FORM_LABEL}>選択中のユーザー</label>
                                     <div style={{
-                                        padding: '8px 12px',
-                                        backgroundColor: '#f3f4f6',
-                                        borderRadius: '4px',
-                                        fontSize: '14px',
-                                        color: '#6b7280'
+                                        padding: '8px 12px', backgroundColor: '#f3f4f6',
+                                        borderRadius: '4px', fontSize: '14px', color: '#6b7280',
                                     }}>
                                         {selectedUser.email}
                                     </div>
                                 </div>
 
-                                <div style={styles.formGroup}>
-                                    <label style={styles.label}>ユーザー属性 *</label>
+                                <div style={FORM_GROUP}>
+                                    <label style={FORM_LABEL}>ユーザー属性 *</label>
                                     <select
-                                        style={styles.select}
+                                        style={FORM_SELECT}
                                         value={newRole}
                                         onChange={(e) => {
                                             setNewRole(e.target.value);
-                                            // 管理者の場合、自動的にnationalを設定
                                             if (e.target.value === 'admin') {
                                                 setNewPrimaryArea('national');
-                                            } else {
-                                                // 管理者以外の場合、nationalが選択されていたらリセット
-                                                if (newPrimaryArea === 'national') {
-                                                    setNewPrimaryArea('');
-                                                }
+                                            } else if (newPrimaryArea === 'national') {
+                                                setNewPrimaryArea('');
                                             }
                                         }}
                                         required
@@ -427,10 +258,10 @@ export default function UserManagement({ onClose, onSuccess, userInfo }: UserMan
                                     </select>
                                 </div>
 
-                                <div style={styles.formGroup}>
-                                    <label style={styles.label}>担当エリア *</label>
+                                <div style={FORM_GROUP}>
+                                    <label style={FORM_LABEL}>担当エリア *</label>
                                     <select
-                                        style={styles.select}
+                                        style={FORM_SELECT}
                                         value={newPrimaryArea}
                                         onChange={(e) => setNewPrimaryArea(e.target.value)}
                                         required
@@ -443,7 +274,7 @@ export default function UserManagement({ onClose, onSuccess, userInfo }: UserMan
                                             </option>
                                         ))}
                                     </select>
-                                    <div style={styles.helpText}>
+                                    <div style={FORM_HELP_TEXT}>
                                         {newRole === 'admin'
                                             ? '管理者は自動的に全エリアが設定されます'
                                             : isEditor
@@ -453,48 +284,34 @@ export default function UserManagement({ onClose, onSuccess, userInfo }: UserMan
                                     </div>
                                 </div>
 
-                                {error && <div style={styles.error}>{error}</div>}
+                                {error && <div style={FORM_ERROR}>{error}</div>}
 
-                                <div style={styles.buttonGroup}>
+                                <div style={BUTTON_GROUP}>
                                     <button
                                         type="button"
-                                        style={{...styles.button, ...styles.cancelButton}}
+                                        style={{ ...BUTTON_BASE, ...BUTTON_CANCEL }}
                                         onClick={() => {
                                             setSelectedUser(null);
                                             setNewPrimaryArea('');
                                             setNewRole('');
                                             setError(null);
                                         }}
-                                        onMouseEnter={(e) => {
-                                            if (!isLoading) e.currentTarget.style.backgroundColor = '#e5e7eb';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (!isLoading) e.currentTarget.style.backgroundColor = '#f3f4f6';
-                                        }}
+                                        {...cancelHover}
                                     >
                                         選択解除
                                     </button>
                                     <button
                                         type="submit"
-                                        style={{
-                                            ...styles.button,
-                                            ...styles.submitButton,
-                                            ...(isLoading ? styles.submitButtonDisabled : {})
-                                        }}
+                                        style={{ ...BUTTON_BASE, ...BUTTON_SUBMIT, ...(isLoading ? BUTTON_DISABLED : {}) }}
                                         disabled={isLoading}
-                                        onMouseEnter={(e) => {
-                                            if (!isLoading) e.currentTarget.style.backgroundColor = '#2563eb';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (!isLoading) e.currentTarget.style.backgroundColor = '#3b82f6';
-                                        }}
+                                        {...submitHover}
                                     >
                                         {isLoading ? '変更中...' : 'ユーザー情報変更'}
                                     </button>
                                 </div>
                             </form>
                         ) : (
-                            <div style={styles.infoBox}>
+                            <div style={local.infoBox}>
                                 左のリストからユーザーを選択してください<br/>
                                 ユーザーの権限（属性）・担当エリアが変更できます
                             </div>
