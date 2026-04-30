@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import WaterLevelHistoryGraph from "@/components/water-level-hisotry-graph";
+import { useResizable } from '@/hooks/use-resizable';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -15,10 +16,12 @@ dayjs.tz.setDefault('Asia/Tokyo');
 // センサー詳細情報コンポーネント
 const WaterLevelDetails = ({ selected, onClose }) => {
     const [displayMode, setDisplayMode] = useState<string>('graph');
+    const { width, resizeHandle } = useResizable(350, 240, 800);
 
-        
     return (
-        <div style={{ ...styles.layerSection, ...styles.sensorDetails }}>
+        <div style={{ position: 'absolute', top: '110px', right: '10px', width, height: 'calc(100vh - 210px)', borderRadius: '8px', zIndex: 999, backgroundColor: 'white', boxShadow: '4px 0 8px rgba(0, 0, 0, 0.15)' }}>
+            {resizeHandle}
+            <div style={{ height: '100%', overflowY: 'auto', padding: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                 <h3 style={{...styles.sectionTitle, fontSize: '17px'}}>水位センサーポイント情報</h3>
                 <button
@@ -90,6 +93,7 @@ const WaterLevelDetails = ({ selected, onClose }) => {
                         ))}
                     </div>
                 }
+            </div>
             </div>
         </div>
     );
