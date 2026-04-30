@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Map, NavigationControl } from 'react-map-gl/maplibre';
 import { BitmapLayer, GeoJsonLayer, IconLayer, PathLayer, PolygonLayer, TextLayer } from '@deck.gl/layers';
 import { ContourLayer, HeatmapLayer } from '@deck.gl/aggregation-layers';
@@ -20,13 +20,14 @@ import OrthoHistorySwitcher from '@/components/ortho-history-switcher';
 import { Container } from 'lucide-react';
 
 
-export default function DemoAreaMap({ userInfo }: { userInfo?: any }) {
+interface DemoAreaMapProps { userInfo?: any; pickingLocation?: boolean; onLocationPick?: (lat: number, lng: number) => void; }
+export default function DemoAreaMap({ userInfo, pickingLocation, onLocationPick }: DemoAreaMapProps) {
     // キャッシュ管理フックの初期化
     const { clearExpiredCache, clearAllCache, getCacheStats } = useCacheCleanup(true);
     
     // デモエリア固定のワークスペース（demoワークスペースを使用）
     const currentWorkspace = 'demo';
-    // register-service の命名規則 ortho-{workspace} に合わせる
+    // api の命名規則 ortho-{workspace} に合わせる
     const STORE_NAME = `ortho-${currentWorkspace}`;
 
     // ベースマップのスタイル
@@ -57,6 +58,7 @@ export default function DemoAreaMap({ userInfo }: { userInfo?: any }) {
         pitch: 0
     };
 
+    const mapRef = useRef<any>(null);
     const [selected, setSelected] = useState(null);
     const [selectedWaterLevel, setSelectedWaterLevel] = useState(null);
     const [contourData, setContourData] = useState(null);
@@ -664,29 +666,51 @@ export default function DemoAreaMap({ userInfo }: { userInfo?: any }) {
                 {isLoading ? 
                     <div style={styles.loading}>Loading...</div>
                     :
-                    <Map
-                        initialViewState={mapInitCenter}
-                        mapStyle={!mapModeDark ? MAP_STYLE : DARK_MAP_STYLE}
-                        style={styles.map}
-                        onMove={onViewStateChange}
-                        onDrag={onViewStateChange}
-                        onZoom={onViewStateChange}
-                        onRotate={onViewStateChange}
-                        reuseMaps
-                    >
-                        {!isLoading && 
-                            <DeckOverlay
-                                layers={layers}
-                                onViewStateChange={onViewStateChange}
-                                controller={true}
-                            />
-                        }
-                        <NavigationControl position="top-right" />
-                        {renderTooltip()}
+                    <>
+                        <Map
+                            initialViewState={mapInitCenter}
+                            mapStyle={!mapModeDark ? MAP_STYLE : DARK_MAP_STYLE}
+                            style={styles.map}
+                            onMove={onViewStateChange}
+                            onDrag={onViewStateChange}
+                            onZoom={onViewStateChange}
+                            onRotate={onViewStateChange}
+                            ref={mapRef}
+                            reuseMaps
+                        >
+                            {!isLoading &&
+                                <DeckOverlay
+                                    layers={layers}
+                                    onViewStateChange={onViewStateChange}
+                                    controller={true}
+                                />
+                            }
+                            <NavigationControl position="top-right" />
+                            {renderTooltip()}
 
-                        {/* Basemap Switcher - positioned absolutely in bottom-right */}
-                        <BasemapSwitcher toggleBaseMap={toggleBaseMap} />
-                    </Map>
+                            {/* Basemap Switcher - positioned absolutely in bottom-right */}
+                            <BasemapSwitcher toggleBaseMap={toggleBaseMap} />
+                        </Map>
+                        {/* 場所選択モード: DeckOverlay のクリック横取りを回避する透明オーバーレイ */}
+                        {pickingLocation && (
+                            <div
+                                style={{
+                                    position: 'absolute', inset: 0, zIndex: 500,
+                                    cursor: 'crosshair',
+                                    background: 'rgba(59,130,246,0.08)',
+                                }}
+                                onClick={(e) => {
+                                    if (!mapRef.current || !onLocationPick) return;
+                                    const map = mapRef.current.getMap();
+                                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                    const x = e.clientX - rect.left;
+                                    const y = e.clientY - rect.top;
+                                    const lngLat = map.unproject([x, y]);
+                                    onLocationPick(lngLat.lat, lngLat.lng);
+                                }}
+                            />
+                        )}
+                    </>
                 }
             </div>
 

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Map, NavigationControl } from 'react-map-gl/maplibre';
 import { BitmapLayer } from '@deck.gl/layers';
 import 'maplibre-gl/dist/maplibre-gl.css';
@@ -13,7 +13,8 @@ import { getWorkspaceUrl, fetchOrthoLayers } from '@/utils/geoserver-utils';
 import OrthoHistorySwitcher from '@/components/ortho-history-switcher';
 
 
-export default function MinobuAreaMap({ userInfo }: { userInfo?: any }) {
+interface MinobuAreaMapProps { userInfo?: any; pickingLocation?: boolean; onLocationPick?: (lat: number, lng: number) => void; }
+export default function MinobuAreaMap({ userInfo, pickingLocation, onLocationPick }: MinobuAreaMapProps) {
     // キャッシュ管理フックの初期化
     const { clearExpiredCache, clearAllCache, getCacheStats } = useCacheCleanup(true);
     
@@ -52,6 +53,7 @@ export default function MinobuAreaMap({ userInfo }: { userInfo?: any }) {
         pitch: 0
     };
 
+    const mapRef = useRef<any>(null);
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [gridInfo, setGridInfo] = useState(null);
     const [viewState, setViewState] = useState(INITIAL_VIEW_STATE);
@@ -375,30 +377,52 @@ export default function MinobuAreaMap({ userInfo }: { userInfo?: any }) {
                 {isLoading ? 
                     <div style={styles.loading}>Loading...</div>
                     :
-                    <Map
-                        initialViewState={INITIAL_VIEW_STATE}
-                        mapStyle={MAP_STYLE}
-                        style={styles.map}
-                        onMove={onViewStateChange}
-                        onDrag={onViewStateChange}
-                        onZoom={onViewStateChange}
-                        onRotate={onViewStateChange}
-                        reuseMaps
-                    >
-                        {!isLoading && 
-                            <DeckOverlay
-                                layers={layers}
-                                onViewStateChange={onViewStateChange}
-                                controller={true}
-                            />
-                        }
-                        <NavigationControl position="top-right" />
-                        {renderTooltip()}
+                    <>
+                        <Map
+                            initialViewState={INITIAL_VIEW_STATE}
+                            mapStyle={MAP_STYLE}
+                            style={styles.map}
+                            onMove={onViewStateChange}
+                            onDrag={onViewStateChange}
+                            onZoom={onViewStateChange}
+                            onRotate={onViewStateChange}
+                            ref={mapRef}
+                            reuseMaps
+                        >
+                            {!isLoading &&
+                                <DeckOverlay
+                                    layers={layers}
+                                    onViewStateChange={onViewStateChange}
+                                    controller={true}
+                                />
+                            }
+                            <NavigationControl position="top-right" />
+                            {renderTooltip()}
 
-                        {/* Basemap Switcher - positioned absolutely in bottom-right */}
-                        <BasemapSwitcher toggleBaseMap={toggleBaseMap} />
-                    </Map>
-                } 
+                            {/* Basemap Switcher - positioned absolutely in bottom-right */}
+                            <BasemapSwitcher toggleBaseMap={toggleBaseMap} />
+                        </Map>
+                        {/* 場所選択モード: DeckOverlay のクリック横取りを回避する透明オーバーレイ */}
+                        {pickingLocation && (
+                            <div
+                                style={{
+                                    position: 'absolute', inset: 0, zIndex: 500,
+                                    cursor: 'crosshair',
+                                    background: 'rgba(59,130,246,0.08)',
+                                }}
+                                onClick={(e) => {
+                                    if (!mapRef.current || !onLocationPick) return;
+                                    const map = mapRef.current.getMap();
+                                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                    const x = e.clientX - rect.left;
+                                    const y = e.clientY - rect.top;
+                                    const lngLat = map.unproject([x, y]);
+                                    onLocationPick(lngLat.lat, lngLat.lng);
+                                }}
+                            />
+                        )}
+                    </>
+                }
 
                 {/* 身延町エリアの場合はみのワンを表示 */}
                 <img width={80} height={'auto'} src={'/mino-wan.svg'} style={{ position: 'absolute', bottom: '40px', right: '10px', zIndex: 999}} />
