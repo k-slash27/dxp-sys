@@ -10,12 +10,12 @@
 [nginx :80]  ←── リバースプロキシ（client_max_body_size 5000m）  [operator:3001]  ←── アップロード管理 UI（nginx 経由なし）
     ├── /              → frontend:3000      (Next.js 地図閲覧 UI)         │
     ├── /geoserver/    → geoserver:8080     (GeoServer WMS/WFS/REST)   　│
-    └── /api/register/ → register-service:8000 (FastAPI)               　│
+    └── /api/register/ → api:8000 (FastAPI)               　│
                                     ▲                                  　│
                                     └────────────────────────────────────┘
-                                                                (内部通信 → register-service:8000)
+                                                                (内部通信 → api:8000)
 
-[register-service:8000]
+[api:8000]
     └── → geoserver:8080  (内部通信: GeoServer REST API)
 
 [geoserver:8080]
@@ -37,7 +37,7 @@
   → WMS タイル画像を返却
 ```
 
-### オルソ画像アップロード（operator → register-service → GeoServer）
+### オルソ画像アップロード（operator → api → GeoServer）
 
 ```
 ブラウザ（operator）
@@ -45,8 +45,8 @@
   → operator Next.js API Route (/api/upload/route.ts)
     bodyParser 無効・ストリーム転送（大容量対応）
   → POST /webhook/upload-file
-  → register-service: TIF を /data/ortho/{workspace}/ に保存
-  → register-service: GeoServer REST API で ImageMosaic に granule 登録
+  → api: TIF を /data/ortho/{workspace}/ に保存
+  → api: GeoServer REST API で ImageMosaic に granule 登録
   → GeoServer: インデックス（.shp）更新
   → 完了レスポンス（task_id 付き）
 ```
@@ -58,7 +58,7 @@
   → GET /api/progress/{taskId}
   → operator Next.js API Route (/api/progress/[taskId])
   → GET /webhook/progress/{taskId}  (SSE プロキシ)
-  → register-service: Server-Sent Events で進捗を逐次配信
+  → api: Server-Sent Events で進捗を逐次配信
 ```
 
 ## データフロー（アップロード〜地図表示まで）
@@ -67,13 +67,13 @@
 1. ユーザーが operator で TIF ファイルを選択・日付指定してアップロード
        │
        ▼
-2. operator → register-service に multipart POST（ストリーム転送）
+2. operator → api に multipart POST（ストリーム転送）
        │
        ▼
-3. register-service が /data/ortho/{workspace}/ortho_{YYYYMMDD}.tif として保存
+3. api が /data/ortho/{workspace}/ortho_{YYYYMMDD}.tif として保存
        │
        ▼
-4. register-service が GeoServer REST API を呼び出し
+4. api が GeoServer REST API を呼び出し
        │   ├── ストア未存在: シンリンク作成 → ZIP PUT → TIME 次元有効化 → external.imagemosaic POST
        │   └── ストア既存:  external.imagemosaic POST のみ
        │
@@ -153,7 +153,7 @@ volumes:
 ### シンリンクによるディレクトリ共有の仕組み
 
 GeoServer は ImageMosaic ストアを初期化する際、`data_dir/data/{workspace}/{store_name}/` にインデックスを作成しようとします。  
-register-service がここにシンリンクを張ることで、インデックスが `/data/ortho/{workspace}/` に書き込まれ、TIF ファイルと同じディレクトリに揃います。
+journal がここにシンリンクを張ることで、インデックスが `/data/ortho/{workspace}/` に書き込まれ、TIF ファイルと同じディレクトリに揃います。
 
 ```
 GeoServer コンテナ側:
@@ -165,13 +165,13 @@ GeoServer コンテナ側:
 
 ## nginx ルーティング詳細
 
-nginx は frontend・operator・GeoServer・register-service の4系統をプロキシします。  
+nginx は frontend・operator・GeoServer・api の4系統をプロキシします。  
 operator は `/operator` パスで nginx を経由してアクセスします（Next.js の `basePath=/operator` と対応）。
 
 | パス | プロキシ先 | 備考 |
 |-----|----------|------|
 | `/geoserver/` | `geoserver:8080/geoserver/` | proxy_read_timeout 300s |
-| `/api/register/` | `register-service:8000/` | proxy_buffering off（SSE 対応） |
+| `/api/register/` | `api:8000/` | proxy_buffering off（SSE 対応） |
 | `/operator` | `operator:3000/` | Next.js basePath=/operator |
 | `/` | `frontend:3000/` | WebSocket Upgrade 対応 |
 

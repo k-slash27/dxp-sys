@@ -12,7 +12,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const r = await fetch(`${REGISTER_SERVICE_URL}/webhook/granules/${workspace}`, { cache: 'no-store' });
-    if (!r.ok) return res.status(r.status).json({ error: `register-service error: ${r.status}` });
+    if (!r.ok) return res.status(r.status).json({ error: `api error: ${r.status}` });
     const data = await r.json();
     res.status(200).json(data);
   } catch (err: any) {

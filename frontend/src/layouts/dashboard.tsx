@@ -2,7 +2,7 @@ import React, { ReactNode, useState } from 'react';
 import styles from '@/styles/dashboard.module.css';
 import SettingsMenu from '@/components/settings-menu';
 import AreaSelector from '@/components/area-selector';
-import { Printer } from 'lucide-react';
+import { Printer, BookOpen } from 'lucide-react';
 import PrintScreenshotModal from '@/components/print-screenshot-modal';
 
 interface DashboardProps {
@@ -12,6 +12,7 @@ interface DashboardProps {
     children: ReactNode;
     selectedArea?: string;
     onAreaChange?: (area: string) => void;
+    onJournalOpen?: () => void;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({
@@ -20,7 +21,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     onLogout,
     children,
     selectedArea = '',
-    onAreaChange
+    onAreaChange,
+    onJournalOpen,
 }) => {
     const [showTooltip, setShowTooltip] = useState(false);
     const [showPrintModal, setShowPrintModal] = useState(false);
@@ -117,6 +119,34 @@ const Dashboard: React.FC<DashboardProps> = ({
                             </div>
                         )}
                     </div>
+
+                    {/* 生産者日誌ボタン */}
+                    <button
+                        style={{
+                            padding: '0.3rem 0.5rem',
+                            borderRadius: '0.375rem',
+                            backgroundColor: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#fff',
+                            transition: 'all 0.2s ease'
+                        }}
+                        onClick={onJournalOpen}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#4c535f';
+                            e.currentTarget.style.color = '#d1d5db';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                            e.currentTarget.style.color = '#fff';
+                        }}
+                        title="生産者日誌"
+                    >
+                        <BookOpen size={18} />
+                    </button>
 
                     {/* 印刷ボタン（設定メニューの左） */}
                     <button

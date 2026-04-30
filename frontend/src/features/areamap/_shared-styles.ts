@@ -202,7 +202,8 @@ const styles: Record<string, React.CSSProperties> = {
         left: 'calc(320px + 25px)',
     },
     mapContainer: {
-        flex: 1
+        flex: 1,
+        position: 'relative' as const,
     },
     map: {
         height: '100%',

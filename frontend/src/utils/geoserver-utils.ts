@@ -15,7 +15,7 @@ export interface OrthoHistoryDate {
 
 /**
  * ImageMosaic の granule 一覧から時系列エントリを取得する。
- * register-service の /webhook/granules/{workspace} をプロキシする API 経由で取得。
+ * api の /webhook/granules/{workspace} をプロキシする API 経由で取得。
  */
 export const fetchOrthoGranules = async (workspace: string): Promise<OrthoHistoryDate[]> => {
     const res = await fetch(`/api/geoserver/granules?workspace=${encodeURIComponent(workspace)}`);

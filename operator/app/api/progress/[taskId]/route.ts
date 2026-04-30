@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server';
 
-const REGISTER_SERVICE_URL = process.env.REGISTER_SERVICE_URL || 'http://register-service:8000';
+const REGISTER_SERVICE_URL = process.env.REGISTER_SERVICE_URL || 'http://journal:8000';
 
 /**
- * register-service の SSE 進捗エンドポイントへのプロキシ。
+ * api の SSE 進捗エンドポイントへのプロキシ。
  * EventSource は同一オリジンしか直接叩けないため、operator 経由で転送する。
  */
 export async function GET(
