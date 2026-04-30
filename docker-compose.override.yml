@@ -7,12 +7,12 @@ services:
     ports:
       - "5432:5432"
 
-  register-service:
+  api:
     ports:
       - "8000:8000"
     volumes:
-      - ./register-service/app:/app/app
-      - ./register-service/templates:/app/templates
+      - ./api/app:/app/app
+      - ./api/templates:/app/templates
 
   operator:
     ports:
@@ -45,6 +45,12 @@ volumes:
       type: none
       o: bind
       device: ${PWD}/data/ortho
+  photos_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/data/photos
   # NFS 環境例（本番サーバー用 override.prod.yml での記述例）:
   # geoserver_data:
   #   driver: local

@@ -43,19 +43,24 @@ services:
       retries: 5
     restart: unless-stopped
 
-  register-service:
-    build: ./register-service
+  api:
+    build: ./api
     volumes:
       - ortho_data:/data/ortho
       - geoserver_data:/opt/geoserver/data_dir  # シンリンク作成のため data_dir を共有
+      - photos_data:/data/photos
     environment:
       - GEOSERVER_URL=http://geoserver:8080/geoserver
       - GEOSERVER_USER=${GEOSERVER_USER:-admin}
       - GEOSERVER_PASSWORD=${GEOSERVER_PASSWORD:-geoserver}
       - DATA_DIR=/data/ortho
       - GEOSERVER_DATA_DIR=/opt/geoserver/data_dir
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-dxp}:${POSTGRES_PASSWORD:-dxp}@postgis:5432/${POSTGRES_DB:-dxp}
+      - PHOTOS_DIR=/data/photos
     depends_on:
       geoserver:
+        condition: service_healthy
+      postgis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -67,7 +72,7 @@ services:
   operator:
     build: ./operator
     environment:
-      - REGISTER_SERVICE_URL=http://register-service:8000
+      - REGISTER_SERVICE_URL=http://api:8000
       - GEOSERVER_URL=http://geoserver:8080/geoserver
       - GEOSERVER_USERNAME=${GEOSERVER_USER:-admin}
       - GEOSERVER_PASSWORD=${GEOSERVER_PASSWORD:-geoserver}
@@ -81,18 +86,21 @@ services:
       - AUTH0_COOKIE_NAME=operator_session
       - NEXT_PUBLIC_AUTH0_NAMESPACE=${AUTH0_NAMESPACE:-https://dxp/}
     depends_on:
-      register-service:
+      api:
         condition: service_healthy
     restart: unless-stopped
 
   frontend:
     build: ./frontend
+    volumes:
+      - photos_data:/data/photos
     environment:
       - NEXT_PUBLIC_GEOSERVER_HOST=/geoserver
       - GEOSERVER_URL=http://geoserver:8080/geoserver
       - GEOSERVER_USER=${GEOSERVER_USER:-admin}
       - GEOSERVER_PASSWORD=${GEOSERVER_PASSWORD:-geoserver}
-      - REGISTER_SERVICE_URL=http://register-service:8000
+      - REGISTER_SERVICE_URL=http://api:8000
+      - PHOTOS_DIR=/data/photos
       # Auth0 認証（frontend 用）
       - AUTH0_SECRET=${FRONTEND_AUTH0_SECRET}
       - AUTH0_BASE_URL=${FRONTEND_AUTH0_BASE_URL:-http://localhost}
@@ -119,10 +127,11 @@ services:
       - geoserver
       - operator
       - frontend
-      - register-service
+      - api
     restart: unless-stopped
 
 volumes:
   geoserver_data:   # GeoServer 設定・スタイル（override で bind mount にマップ）
   ortho_data:       # TIF + ImageMosaic インデックス（override で bind mount にマップ）
   postgres_data:    # PostgreSQL データ（権限管理が複雑なため named volume のまま）
+  photos_data:      # 撮影者レコード紐付き写真データ（override で bind mount にマップ）

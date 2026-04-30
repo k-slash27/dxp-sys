@@ -130,7 +130,7 @@ GeoServer は ImageMosaic ストアを初期化する際、以下の場所にイ
 - `external.imagemosaic` POST が「インデックスと同じ場所に TIF がある」という前提を満たす
 - bind mount によりホスト側の `./data/ortho/{ws}/` に全データが集約され、バックアップが容易
 
-シンリンク作成は register-service が担い、GeoServer コンテナ起動後・ストア初期化前に実行されます。GeoServer と register-service は `./data/geoserver_data` を共有マウントしているため、register-service 側からシンリンク操作が可能です。
+シンリンク作成は api が担い、GeoServer コンテナ起動後・ストア初期化前に実行されます。GeoServer と api は `./data/geoserver_data` を共有マウントしているため、api 側からシンリンク操作が可能です。
 
 ## 自動リカバリ
 

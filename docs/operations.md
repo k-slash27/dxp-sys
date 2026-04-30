@@ -46,7 +46,7 @@ docker compose down -v
 docker compose restart
 
 # 特定サービスのみ再起動
-docker compose restart register-service
+docker compose restart api
 ```
 
 ### ログ確認
@@ -56,7 +56,7 @@ docker compose restart register-service
 docker compose logs -f
 
 # 特定サービスのログ
-docker compose logs -f register-service
+docker compose logs -f api
 docker compose logs -f geoserver
 
 # 直近 100 行
@@ -75,7 +75,7 @@ docker compose up -d
 # http://localhost/operator   - operator（Auth0 認証）
 # http://localhost:3000/      - frontend（直接）
 # http://localhost:3001/      - operator（直接）
-# http://localhost:8000/docs  - register-service Swagger UI
+# http://localhost:8000/docs  - api Swagger UI
 # http://localhost:8080/geoserver/ - GeoServer 管理画面
 # http://localhost:5432/      - PostgreSQL
 ```
@@ -85,12 +85,12 @@ docker compose up -d
 ## ワークスペース（エリア）の追加
 
 新しい撮影エリアを追加する場合、GeoServer のワークスペースを作成します。  
-register-service は初回アップロード時にワークスペースを自動作成するため、**通常は手動作成不要**です。
+journal は初回アップロード時にワークスペースを自動作成するため、**通常は手動作成不要**です。
 
 ### 自動作成（推奨）
 
 operator 画面で新しいワークスペース名を指定してオルソ画像をアップロードするだけです。  
-register-service が以下を自動実行します。
+journal が以下を自動実行します。
 
 1. ワークスペース作成（GeoServer REST API）
 2. `/data/ortho/{workspace}/` ディレクトリ作成
@@ -123,7 +123,7 @@ register-service が以下を自動実行します。
 ### API からのアップロード（curl）
 
 ```bash
-# register-service に直接アップロード（開発時）
+# journal に直接アップロード（開発時）
 curl -X POST http://localhost:8000/webhook/upload-file \
   -F "file=@/path/to/ortho_20260101.tif" \
   -F "workspace=site-a" \
@@ -234,7 +234,7 @@ docker compose up -d
 
 ### TIF ファイルのみ復元（GeoServer 設定は残す場合）
 
-TIF を追加・削除した後にインデックスと不整合が生じた場合、register-service の自動リカバリを活用できます。
+TIF を追加・削除した後にインデックスと不整合が生じた場合、api の自動リカバリを活用できます。
 
 ```bash
 # 1. TIF を /data/ortho/{workspace}/ に配置
@@ -276,11 +276,11 @@ docker compose exec geoserver bash
 **症状**: operator でアップロードがエラーになる
 
 ```bash
-# register-service のログを確認
-docker compose logs register-service
+# journal のログを確認
+docker compose logs api
 
 # GeoServer への接続を確認
-docker compose exec register-service curl -s http://geoserver:8080/geoserver/web/
+docker compose exec api curl -s http://geoserver:8080/geoserver/web/
 ```
 
 **よくある原因**:

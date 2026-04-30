@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const REGISTER_SERVICE_URL = process.env.REGISTER_SERVICE_URL || 'http://register-service:8000';
+const REGISTER_SERVICE_URL = process.env.REGISTER_SERVICE_URL || 'http://journal:8000';
 
 /**
- * GeoTiff ファイルを受け取り、register-service 経由で GeoServer に登録する。
+ * GeoTiff ファイルを受け取り、api 経由で GeoServer に登録する。
  *
- * bodyParser を無効化し、リクエストボディをストリームのまま register-service に転送する。
+ * bodyParser を無効化し、リクエストボディをストリームのまま api に転送する。
  * これにより 2.5GB 超の TIF でもメモリに全展開せず処理できる。
  */
 
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'multipart/form-data が必要です' }, { status: 400 });
     }
 
-    // リクエストボディをストリームのまま register-service に転送
+    // リクエストボディをストリームのまま api に転送
     const res = await fetch(`${REGISTER_SERVICE_URL}/webhook/upload-file`, {
       method: 'POST',
       headers: {

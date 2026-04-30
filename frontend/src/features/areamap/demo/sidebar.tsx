@@ -2,6 +2,7 @@ import LayerToggle from "@/components/layer-toggle";
 import styles from "@/features/areamap/_shared-styles";
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { useState } from 'react';
+import React from 'react';
 
 export default function Sidebar(props) {
     const {
@@ -15,6 +16,43 @@ export default function Sidebar(props) {
     
     // 将来の拡張用にuseAuthは保持
     // const { userRole, getAccessibleWorkspaces, workspacesLoading } = useAuth(userInfo);
+
+    const [sidebarWidth, setSidebarWidth] = useState(320);
+
+    const handleRightEdgeDrag = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const startX = e.clientX;
+        const startWidth = sidebarWidth;
+        const onMove = (ev: MouseEvent) => {
+            setSidebarWidth(Math.min(600, Math.max(200, startWidth + (ev.clientX - startX))));
+        };
+        const onUp = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        };
+        document.body.style.cursor = 'ew-resize';
+        document.body.style.userSelect = 'none';
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    };
+
+    const rightResizeHandle = (
+        <div
+            onMouseDown={handleRightEdgeDrag}
+            style={{
+                position: 'absolute' as const,
+                right: 0,
+                top: 0,
+                bottom: 0,
+                width: '6px',
+                cursor: 'ew-resize',
+                zIndex: 11,
+                background: 'transparent',
+            }}
+        />
+    );
 
     // レイヤーの初期順序
     const [layerOrder, setLayerOrder] = useState([
@@ -47,7 +85,8 @@ export default function Sidebar(props) {
             {/* Inject scrollbar CSS */}
             
             {/* サイドバー */}
-            <div style={{ ...styles.sidebar, ...(sidebarOpen ? {} : styles.sidebarHidden) }}>
+            <div style={{ ...styles.sidebar, width: sidebarWidth, ...(sidebarOpen ? {} : { transform: `translateX(-${sidebarWidth + 26}px)` }) }}>
+                {rightResizeHandle}
                 {/* サイドバーヘッダー */}
                 <div style={styles.sidebarHeader}>
                     <h2 style={styles.sidebarTitle}>表示設定</h2>
@@ -181,7 +220,7 @@ export default function Sidebar(props) {
 
             {/* トグルボタン */}
             <button
-                style={{ ...styles.toggleButton, ...(sidebarOpen && styles.toggleButtonClose) }}
+                style={{ ...styles.toggleButton, ...(sidebarOpen ? { left: `calc(${sidebarWidth}px + 25px)` } : {}) }}
                 onClick={() => setSidebarOpen(!sidebarOpen)}
             >
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

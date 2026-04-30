@@ -10,7 +10,7 @@
 | nginx | nginx:1.27-alpine | リバースプロキシ（ポート 80） |
 | frontend | Next.js + deck.gl + MapLibre GL | 地図閲覧 UI |
 | operator | Next.js 16（App Router） | アップロード管理 UI |
-| register-service | FastAPI（Python） | ファイル受付・GeoServer 登録 API |
+| api | FastAPI（Python） | ファイル受付・GeoServer 登録 API |
 | geoserver | kartoza/geoserver:2.28.2 | WMS/WFS タイル配信・ImageMosaic 管理 |
 | postgis | PostGIS 15-3.4 | 空間データベース |
 
@@ -21,8 +21,8 @@
 | `http://localhost/` | 地図閲覧 UI（Auth0 認証） |
 | `http://localhost/operator` | operator 管理 UI（Auth0 認証） |
 | `http://localhost/geoserver/` | GeoServer 管理画面・WMS/WFS |
-| `http://localhost/api/register/` | register-service API（nginx 経由） |
-| `http://localhost:8000/docs` | register-service Swagger UI（開発時） |
+| `http://localhost/api/register/` | api API（nginx 経由） |
+| `http://localhost:8000/docs` | api Swagger UI（開発時） |
 
 ## クイックスタート
 
@@ -53,7 +53,7 @@ dxp-sys/
 ├── nginx/
 │   └── nginx.conf                 # リバースプロキシ設定
 ├── geoserver/                     # GeoServer 関連設定
-├── register-service/              # FastAPI サービス
+├── api/              # FastAPI サービス
 ├── operator/                      # Next.js アップロード管理 UI
 ├── frontend/                      # Next.js 地図閲覧 UI
 ├── scripts/                       # 運用スクリプト
@@ -72,5 +72,5 @@ dxp-sys/
 - [アーキテクチャ](docs/architecture.md) — サービス間通信・データフロー・nginx ルーティング
 - [Auth0 セットアップ](docs/auth0-setup.md) — 認証基盤の設定手順・ロール・パーミッション設計
 - [ImageMosaic](docs/imagemosaic.md) — GeoServer ImageMosaic の仕組みとファイル構成
-- [API 仕様](docs/api.md) — register-service 全エンドポイントの詳細
+- [API 仕様](docs/api.md) — api 全エンドポイントの詳細
 - [運用手順](docs/operations.md) — 起動・停止・バックアップ・トラブルシューティング

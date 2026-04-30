@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Map, NavigationControl } from 'react-map-gl/maplibre';
-import { BitmapLayer, GeoJsonLayer, IconLayer, TextLayer } from '@deck.gl/layers';
+import { BitmapLayer, GeoJsonLayer, IconLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
 import { ContourLayer, HeatmapLayer } from '@deck.gl/aggregation-layers';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MVTLayer, TileLayer } from '@deck.gl/geo-layers';
@@ -19,7 +19,8 @@ import { getWorkspaceUrl, fetchOrthoLayers } from '@/utils/geoserver-utils';
 import OrthoHistorySwitcher from '@/components/ortho-history-switcher';
 
 
-export default function MinamiAlpusAreaMap({ userInfo }: { userInfo?: any }) {
+interface MinamiAlpusAreaMapProps { userInfo?: any; pickingLocation?: boolean; onLocationPick?: (lat: number, lng: number) => void; journalEntries?: { id: string; record_date: string; text_content: string | null; location: { lat: number; lng: number } | null }[]; onJournalMarkerClick?: (entryId: string) => void; }
+export default function MinamiAlpusAreaMap({ userInfo, pickingLocation, onLocationPick, journalEntries = [], onJournalMarkerClick }: MinamiAlpusAreaMapProps) {
     // キャッシュ管理フックの初期化
     const { clearExpiredCache, clearAllCache, getCacheStats } = useCacheCleanup(true);
     
@@ -63,6 +64,7 @@ export default function MinamiAlpusAreaMap({ userInfo }: { userInfo?: any }) {
         pitch: 0
     };
 
+    const mapRef = useRef<any>(null);
     const [selected, setSelected] = useState(null);
     const [selectedWaterLevel, setSelectedWaterLevel] = useState(null);
     const [contourData, setContourData] = useState(null);
@@ -450,6 +452,29 @@ export default function MinamiAlpusAreaMap({ userInfo }: { userInfo?: any }) {
     }, [contourData, viewState.zoom]);
 
 
+    // 生産者日誌マーカーレイヤー
+    const journalMarkerLayer = useMemo(() => {
+        const entries = (journalEntries as any[]).filter((e: any) => e.location !== null);
+        if (entries.length === 0) return null;
+        return new ScatterplotLayer({
+            id: 'journal-markers',
+            data: entries,
+            getPosition: (d: any) => [d.location.lng, d.location.lat],
+            getRadius: 8,
+            radiusMinPixels: 8,
+            radiusMaxPixels: 20,
+            getFillColor: [74, 222, 128, 220],
+            getLineColor: [255, 255, 255],
+            lineWidthMinPixels: 2,
+            stroked: true,
+            pickable: true,
+            onClick: (info: any) => {
+                onJournalMarkerClick?.(info.object.id);
+            },
+            updateTriggers: { getPosition: journalEntries },
+        });
+    }, [journalEntries]);
+
     // すべてのレイヤーを1つの配列にまとめる
     const layers = useMemo(() => {
         const activeLayers: any[] = [];
@@ -479,20 +504,24 @@ export default function MinamiAlpusAreaMap({ userInfo }: { userInfo?: any }) {
         
         // ヒートマップは常に上層に配置
         if (heatmapLayer) activeLayers.push(heatmapLayer);
-        
+
+        // 生産者日誌マーカーは最上層
+        if (journalMarkerLayer) activeLayers.push(journalMarkerLayer);
+
         return activeLayers;
     }, [
         layerRenderOrder,
-        nouchiOrthoLayer, 
-        gridLayer, 
-        heatmapLayer, 
-        sensorLayer, 
-        waterLevelLayer, 
-        waterLevelTextLayer, 
-        gsiMapLayer, 
-        gsiBaseMapLayer, 
-        waterLevelOrthoLayer, 
-        VARILayer
+        nouchiOrthoLayer,
+        gridLayer,
+        heatmapLayer,
+        sensorLayer,
+        waterLevelLayer,
+        waterLevelTextLayer,
+        gsiMapLayer,
+        gsiBaseMapLayer,
+        waterLevelOrthoLayer,
+        VARILayer,
+        journalMarkerLayer
     ]);
 
     // GeoPackageの属性データを表示
@@ -608,29 +637,51 @@ export default function MinamiAlpusAreaMap({ userInfo }: { userInfo?: any }) {
                 {isLoading ? 
                     <div style={styles.loading}>Loading...</div>
                     :
-                    <Map
-                        initialViewState={INITIAL_VIEW_STATE}
-                        mapStyle={!mapModeDark ? MAP_STYLE : DARK_MAP_STYLE}
-                        style={styles.map}
-                        onMove={onViewStateChange}
-                        onDrag={onViewStateChange}
-                        onZoom={onViewStateChange}
-                        onRotate={onViewStateChange}
-                        reuseMaps
-                    >
-                        {!isLoading && 
-                            <DeckOverlay
-                                layers={layers}
-                                onViewStateChange={onViewStateChange}
-                                controller={true}
-                            />
-                        }
-                        <NavigationControl position="top-right" />
-                        {renderTooltip()}
+                    <>
+                        <Map
+                            initialViewState={INITIAL_VIEW_STATE}
+                            mapStyle={!mapModeDark ? MAP_STYLE : DARK_MAP_STYLE}
+                            style={styles.map}
+                            onMove={onViewStateChange}
+                            onDrag={onViewStateChange}
+                            onZoom={onViewStateChange}
+                            onRotate={onViewStateChange}
+                            ref={mapRef}
+                            reuseMaps
+                        >
+                            {!isLoading &&
+                                <DeckOverlay
+                                    layers={layers}
+                                    onViewStateChange={onViewStateChange}
+                                    controller={true}
+                                />
+                            }
+                            <NavigationControl position="top-right" />
+                            {renderTooltip()}
 
-                        {/* Basemap Switcher - positioned absolutely in bottom-right */}
-                        <BasemapSwitcher toggleBaseMap={toggleBaseMap} />
-                    </Map>
+                            {/* Basemap Switcher - positioned absolutely in bottom-right */}
+                            <BasemapSwitcher toggleBaseMap={toggleBaseMap} />
+                        </Map>
+                        {/* 場所選択モード: DeckOverlay のクリック横取りを回避する透明オーバーレイ */}
+                        {pickingLocation && (
+                            <div
+                                style={{
+                                    position: 'absolute', inset: 0, zIndex: 500,
+                                    cursor: 'crosshair',
+                                    background: 'rgba(59,130,246,0.08)',
+                                }}
+                                onClick={(e) => {
+                                    if (!mapRef.current || !onLocationPick) return;
+                                    const map = mapRef.current.getMap();
+                                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                                    const x = e.clientX - rect.left;
+                                    const y = e.clientY - rect.top;
+                                    const lngLat = map.unproject([x, y]);
+                                    onLocationPick(lngLat.lat, lngLat.lng);
+                                }}
+                            />
+                        )}
+                    </>
                 }
             </div>
 

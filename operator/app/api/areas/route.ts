@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const REGISTER_SERVICE_URL = process.env.REGISTER_SERVICE_URL || 'http://register-service:8000';
+const REGISTER_SERVICE_URL = process.env.REGISTER_SERVICE_URL || 'http://journal:8000';
 
 export async function GET() {
   try {
@@ -11,7 +11,7 @@ export async function GET() {
 
     if (!res.ok) {
       return NextResponse.json(
-        { error: `register-service への接続に失敗しました (${res.status})` },
+        { error: `api への接続に失敗しました (${res.status})` },
         { status: 502 }
       );
     }

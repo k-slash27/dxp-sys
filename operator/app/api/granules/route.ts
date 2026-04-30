@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const REGISTER_SERVICE_URL = process.env.REGISTER_SERVICE_URL || 'http://register-service:8000';
+const REGISTER_SERVICE_URL = process.env.REGISTER_SERVICE_URL || 'http://journal:8000';
 
 export async function GET(request: NextRequest) {
   const workspace = request.nextUrl.searchParams.get('workspace');

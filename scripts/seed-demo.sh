@@ -40,25 +40,25 @@ curl -sf -X DELETE \
 
 # 共有ボリューム上のインデックスファイルをクリア（TIF は残す）
 log "インデックスファイルをクリア中..."
-docker compose exec -T register-service sh -c "
+docker compose exec -T api sh -c "
   cd /data/ortho/${WORKSPACE} 2>/dev/null || exit 0
   rm -f *.shp *.dbf *.shx *.prj *.fix *.qix *.imagemosaic *.dat *.properties
 " || true
 
 # デモデータを共有ボリュームにコピー
 log "デモデータを共有ボリュームにコピー中..."
-docker compose exec -T register-service mkdir -p /data/ortho/${WORKSPACE}
+docker compose exec -T api mkdir -p /data/ortho/${WORKSPACE}
 
 # テンプレートをコピー
 docker compose cp "${SCRIPT_DIR}/../geoserver/templates/indexer.properties" \
-  "register-service:/data/ortho/${WORKSPACE}/indexer.properties"
+  "api:/data/ortho/${WORKSPACE}/indexer.properties"
 docker compose cp "${SCRIPT_DIR}/../geoserver/templates/timeregex.properties" \
-  "register-service:/data/ortho/${WORKSPACE}/timeregex.properties"
+  "api:/data/ortho/${WORKSPACE}/timeregex.properties"
 
 # TIF ファイルをコピー
 for f in "${DEMO_DATA_DIR}"/ortho_*.tif; do
   fname=$(basename "$f")
-  docker compose cp "$f" "register-service:/data/ortho/${WORKSPACE}/${fname}"
+  docker compose cp "$f" "api:/data/ortho/${WORKSPACE}/${fname}"
 done
 
 # ストアを JSON で作成（url に絶対パスを指定）
